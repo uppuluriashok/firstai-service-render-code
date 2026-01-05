@@ -22,7 +22,8 @@ public class CorsConfig {
                 "http://localhost:8100",
                 "https://localhost",
                 "capacitor://localhost",
-                "https://firstainew-production.up.railway.app"
+                //"https://firstainew-production.up.railway.app"
+                "https://firstai-service-render-code.onrender.com"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
