@@ -2,67 +2,14 @@ package com.example.firstai.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Map;
-
-//@Service
-//public class JwtService {
-//
-//    private final RestTemplate restTemplate;
-//
-//    @Value("${auth.service.url}")
-//    private String authServiceUrl; // http://localhost:8081
-//
-//    public JwtService(RestTemplate restTemplate) {
-//        this.restTemplate = restTemplate;
-//    }
-//
-//    public boolean validateToken(String token) {
-//
-//        if (token == null || token.isBlank())
-//            return false;
-//
-//        String url = authServiceUrl + "/auth/validate";
-//
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.set("Authorization", "Bearer " + token);
-//
-//        HttpEntity<Void> entity = new HttpEntity<>(headers);
-//
-//        try {
-//            ResponseEntity<Map> response = restTemplate.exchange(
-//                    url, HttpMethod.POST, entity, Map.class);
-//
-//            Boolean valid = (Boolean) response.getBody().get("valid");
-//            return valid != null && valid;
-//
-//        } catch (Exception e) {
-//            return false;
-//        }
-//    }
-//
-//
-//        public String extractUsername(String token) {
-//
-//            String url = authServiceUrl + "/auth/me";
-//
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.set("Authorization", "Bearer " + token);
-//
-//            HttpEntity<Void> entity = new HttpEntity<>(headers);
-//
-//            ResponseEntity<Map> response = restTemplate.exchange(
-//                    url, HttpMethod.POST, entity, Map.class);
-//
-//            return (String) response.getBody().get("username");
-//        }
-//    }
-
-//    public String extractUsername(String token) {
-//        return token;
-//    }
 
 @Service
 public class JwtService {
@@ -76,6 +23,9 @@ public class JwtService {
         this.restTemplate = restTemplate;
     }
 
+    /**
+     * 🔐 Validate token with Auth Service and return username
+     */
     public String validateAndGetUsername(String token) {
 
         if (token == null || token.isBlank()) return null;
@@ -83,13 +33,13 @@ public class JwtService {
         String url = authServiceUrl + "/auth/validate";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
+        headers.setBearerAuth(token);
 
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url, HttpMethod.POST, entity, Map.class);
+            ResponseEntity<Map> response =
+                    restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
 
             Boolean valid = (Boolean) response.getBody().get("valid");
 
@@ -104,48 +54,53 @@ public class JwtService {
         }
     }
 
-
+    /**
+     * 🔍 Only validate token
+     */
     public boolean validateToken(String token) {
+        return validateAndGetUsername(token) != null;
+    }
 
-        if (token == null || token.isBlank())
-            return false;
+    /**
+     * 👤 Extract username (used by controllers)
+     */
+    public String extractUsername(String token) {
 
-        String url = authServiceUrl + "/auth/validate";
+        if (token == null || token.isBlank()) return null;
+
+        String url = authServiceUrl + "/auth/me";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
+        headers.setBearerAuth(token);
 
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url, HttpMethod.POST, entity, Map.class);
+            ResponseEntity<Map> response =
+                    restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
 
-            Boolean valid = (Boolean) response.getBody().get("valid");
-            return valid != null && valid;
+            return (String) response.getBody().get("username");
 
         } catch (Exception e) {
-            return false;
+            return null;
         }
     }
 
+    /**
+     * ✅ REQUIRED BY SPRING SECURITY
+     */
+    public Authentication getAuthentication(String token) {
 
-    public String extractUsername(String token) {
+        String username = validateAndGetUsername(token);
 
-          String url = authServiceUrl + "/auth/me";
+        if (username == null) {
+            return null;
+        }
 
-           HttpHeaders headers = new HttpHeaders();
-           headers.set("Authorization", "Bearer " + token);
-         HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-      ResponseEntity<Map> response = restTemplate.exchange(
-                   url, HttpMethod.POST, entity, Map.class);
-
-          return (String) response.getBody().get("username");
-       }
+        return new UsernamePasswordAuthenticationToken(
+                username,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
     }
-
-
-
-
-
+}
