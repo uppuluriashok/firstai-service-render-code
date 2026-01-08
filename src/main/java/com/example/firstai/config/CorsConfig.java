@@ -19,7 +19,9 @@ public class CorsConfig {
         // ✅ Allowed origins (Ionic + Render)
         config.setAllowedOrigins(List.of(
                 "http://localhost:8100",
-                "http://localhost",
+                "https://localhost",
+                "capacitor://localhost",
+                "ionic://localhost",
                 "https://firstai-service-render-code.onrender.com"
         ));
 
