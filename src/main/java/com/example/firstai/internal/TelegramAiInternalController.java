@@ -3,8 +3,14 @@ package com.example.firstai.internal;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -26,26 +32,46 @@ public class TelegramAiInternalController {
     }
 
     @PostMapping("/telegram-chat")
-    public ResponseEntity<?> chatFromTelegram(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> chatFromTelegram(
+            @RequestBody Map<String, String> body) {
 
         String userMessage = body.get("message");
+        String systemPrompt = body.get("systemPrompt");
 
         if (userMessage == null || userMessage.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Message is required"));
         }
 
+        // ✅ Default system prompt (VERY IMPORTANT)
+        if (systemPrompt == null || systemPrompt.isBlank()) {
+            systemPrompt =
+                    "You are a helpful shop assistant. " +
+                            "Answer politely, clearly, and concisely.";
+        }
+
+        // 🔐 Groq headers
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(groqApiKey);
 
+        // 🧠 Build Groq request JSON
         JSONObject requestJson = new JSONObject();
         requestJson.put("model", "llama-3.3-70b-versatile");
 
         JSONArray messages = new JSONArray();
+
+        // 1️⃣ SYSTEM MESSAGE
+        messages.put(new JSONObject()
+                .put("role", "system")
+                .put("content", systemPrompt)
+        );
+
+        // 2️⃣ USER MESSAGE
         messages.put(new JSONObject()
                 .put("role", "user")
-                .put("content", userMessage));
+                .put("content", userMessage)
+        );
 
         requestJson.put("messages", messages);
 
@@ -54,7 +80,11 @@ public class TelegramAiInternalController {
 
         try {
             ResponseEntity<String> response =
-                    restTemplate.postForEntity(GROQ_API_URL, entity, String.class);
+                    restTemplate.postForEntity(
+                            GROQ_API_URL,
+                            entity,
+                            String.class
+                    );
 
             JSONObject json = new JSONObject(response.getBody());
 
@@ -64,7 +94,9 @@ public class TelegramAiInternalController {
                     .getJSONObject("message")
                     .getString("content");
 
-            return ResponseEntity.ok(Map.of("response", aiMessage));
+            return ResponseEntity.ok(
+                    Map.of("response", aiMessage)
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
